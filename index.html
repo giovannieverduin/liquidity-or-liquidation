@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liquidity or Liquidation / GIO/</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --charcoal:#111111;
+    --panel:#181818;
+    --panel-edge:#262626;
+    --navy:#0E3460;
+    --orange:#FF6B2B;
+    --green:#16a34a;
+    --red:#ff3b3b;
+    --white:#FFFFFF;
+    --muted:#8a8a8a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--charcoal);color:var(--white)}
+  body{
+    font-family:'DM Sans',system-ui,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    padding:clamp(16px,4vw,40px);-webkit-font-smoothing:antialiased;
+  }
+  .wrap{width:100%;max-width:560px}
+  .layout{display:grid;gap:16px;grid-template-columns:1fr;grid-template-areas:"stats" "main" "lb"}
+  @media(min-width:820px){
+    .wrap{max-width:900px}
+    .layout{grid-template-columns:290px 1fr;grid-template-areas:"stats main" "lb main";align-items:start}
+  }
+  .stats{grid-area:stats}
+  .main{grid-area:main;min-width:0}
+  .lb{grid-area:lb}
+
+  header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:16px}
+  .mark{font-family:'Outfit',sans-serif;font-weight:900;font-size:22px;letter-spacing:-.5px;line-height:1}
+  .mark .slash{color:var(--orange)}
+  .mute{background:transparent;border:none;color:var(--muted);font-size:17px;cursor:pointer;padding:2px 4px;line-height:1;margin-top:4px}
+  .mute:hover{color:#fff}
+  .mute.off{color:#4a4a4a}
+  .eyebrow{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  h1{font-family:'Outfit',sans-serif;font-weight:900;font-size:clamp(24px,6.5vw,38px);line-height:.95;letter-spacing:-1px;text-transform:uppercase}
+  h1 .slash{color:var(--orange)}
+
+  .stats{display:flex;gap:10px;margin-bottom:0}
+  .stat{flex:1;background:var(--panel);border:1px solid var(--panel-edge);border-radius:10px;padding:12px 14px}
+  .stat .lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+  .stat .val{font-family:'Outfit',sans-serif;font-weight:900;font-size:clamp(20px,5vw,28px);letter-spacing:-.5px;margin-top:3px}
+  @media(min-width:820px){.stats{flex-direction:column}}
+  .stat .val.profit{color:var(--green)}
+  .stat .val.loss{color:var(--red)}
+  .stat .val.even{color:#e8e8e8}
+
+  .lev{display:flex;gap:7px;margin-bottom:9px;align-items:center;flex-wrap:wrap}
+  .lev-lbl{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-right:2px}
+  .lev button{font-family:'Space Mono',monospace;font-size:12px;background:transparent;color:var(--muted);border:1px solid var(--panel-edge);border-radius:999px;padding:6px 13px;cursor:pointer;transition:all .15s}
+  .lev button:hover{color:#fff;border-color:#3a3a3a}
+  .lev button.active{background:#fff;color:var(--charcoal);border-color:#fff}
+  .lev button.hot.active{background:var(--red);border-color:var(--red);color:#fff}
+  .lev-note{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--muted);margin-bottom:12px;min-height:16px}
+
+  .disclaimer{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--orange);background:rgba(255,107,43,.09);border-radius:8px;padding:8px 11px;margin-bottom:14px;font-family:'Space Mono',monospace;font-size:11px;line-height:1.5;letter-spacing:.2px;color:#e9cdbd}
+  .disclaimer b{color:var(--orange)}
+
+  .chartwrap{position:relative;background:var(--panel);border:1px solid var(--panel-edge);border-radius:12px;overflow:hidden;margin-bottom:12px}
+  canvas{display:block;width:100%;height:clamp(210px,34vh,320px)}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;padding:10px}
+  .mult{font-family:'Outfit',sans-serif;font-weight:900;font-size:clamp(46px,15vw,84px);line-height:.9;letter-spacing:-2px;color:var(--white);transition:color .1s}
+  .mult.danger{color:var(--orange)}
+  .mult.dead{color:var(--red)}
+  .mult.deadtext{font-size:clamp(22px,7vw,40px);text-transform:uppercase;letter-spacing:-1px}
+  .cashval{font-family:'Space Mono',monospace;font-size:clamp(13px,3.5vw,16px);color:#cfcfcf;margin-top:8px}
+  .deadlbl{font-family:'Outfit',sans-serif;font-weight:900;font-size:clamp(22px,7vw,40px);letter-spacing:-1px;color:var(--red);text-transform:uppercase}
+
+  .quip{min-height:20px;text-align:center;font-family:'DM Sans',sans-serif;font-size:14px;color:#cdcdcd;margin-bottom:11px;padding:0 6px}
+
+  .action{width:100%;border:none;border-radius:12px;padding:20px;cursor:pointer;
+    font-family:'Outfit',sans-serif;font-weight:900;font-size:clamp(18px,5vw,24px);
+    letter-spacing:.5px;text-transform:uppercase;transition:filter .15s, transform .08s;}
+  .action:active{transform:scale(.98)}
+  .action.ape{background:var(--green);color:var(--white)}
+  .action.cash{background:var(--orange);color:var(--charcoal)}
+  .action.again{background:var(--white);color:var(--charcoal)}
+  .action:hover{filter:brightness(1.08)}
+  .action.broke{background:transparent;border:1.5px solid var(--red);color:var(--red);margin-top:9px;font-size:clamp(13px,3.8vw,17px);padding:14px;letter-spacing:1px}
+  .action.broke:hover{background:var(--red);color:var(--charcoal);filter:none}
+
+  .log{margin-top:16px;display:flex;flex-direction:column;gap:5px}
+  .logrow{display:flex;justify-content:space-between;align-items:center;font-family:'Space Mono',monospace;font-size:12px;padding:7px 12px;background:var(--panel);border:1px solid var(--panel-edge);border-radius:8px}
+  .logrow .m{color:var(--muted)}
+  .logrow.win .r{color:var(--orange)}
+  .logrow.loss .r{color:var(--red)}
+
+  .share{margin-top:14px;width:100%;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.5px;
+    background:transparent;color:var(--white);border:1px solid var(--panel-edge);border-radius:999px;padding:11px;cursor:pointer;transition:border-color .15s}
+  .share:hover{border-color:var(--white)}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal.show{display:flex}
+  .modal-inner{width:100%;max-width:360px;display:flex;flex-direction:column;gap:11px;align-items:center}
+  .cardimg{width:100%;border-radius:14px;border:1px solid var(--panel-edge);display:block}
+  .modal-btns{display:flex;gap:8px;width:100%}
+  .modal-btns button{flex:1;font-family:'Space Mono',monospace;font-size:12px;padding:12px 6px;border-radius:999px;cursor:pointer;border:1px solid var(--panel-edge);background:transparent;color:#fff;transition:border-color .15s,filter .15s}
+  .modal-btns button:hover{border-color:#fff}
+  .modal-btns button.primary{background:var(--orange);color:var(--charcoal);border-color:var(--orange);font-weight:700}
+  .modal-btns button.primary:hover{filter:brightness(1.08)}
+  .modal-hint{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-align:center}
+
+  .lb{margin-top:0}
+  .lb h2{font-family:'Outfit',sans-serif;font-weight:900;font-size:18px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:11px}
+  .lb h2 .slash{color:var(--orange)}
+  .lb-form{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  @media(min-width:820px){.lb-form{flex-direction:column}.lb-form input,.lb-form button{width:100%}.lb-form button{padding:11px}}
+  .lb-form input{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--panel-edge);border-radius:8px;padding:11px 12px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;outline:none}
+  .lb-form input:focus{border-color:#3a3a3a}
+  .lb-form input::placeholder{color:#666}
+  .lb-form button{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;background:var(--orange);color:var(--charcoal);border:none;border-radius:8px;padding:0 16px;cursor:pointer;transition:filter .15s}
+  .lb-form button:hover{filter:brightness(1.08)}
+  .lb-form button:disabled{opacity:.55;cursor:default}
+  .lb-status{font-family:'Space Mono',monospace;font-size:12px;color:var(--orange);min-height:16px;margin-bottom:8px}
+  .lb-list{display:flex;flex-direction:column;gap:5px}
+  .lb-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--panel);border:1px solid var(--panel-edge);border-radius:8px;font-family:'Space Mono',monospace;font-size:13px}
+  .lb-row.me{border-color:var(--orange)}
+  .lb-rank{color:var(--muted);min-width:26px}
+  .lb-handle{flex:1;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lb-tw a{color:var(--muted);text-decoration:none}
+  .lb-tw a:hover{color:var(--orange)}
+  .lb-score{color:var(--orange);font-weight:700}
+  .lb-empty{font-family:'DM Sans',sans-serif;font-size:13px;color:var(--muted);padding:8px 2px}
+
+  footer{margin-top:22px;font-family:'Space Mono',monospace;font-size:11px;color:#555;text-align:center;letter-spacing:.5px;line-height:1.6}
+  .credit{color:#777}
+  .credit b{color:#aaa;font-weight:700}
+  .credit .cslash{color:var(--orange)}
+  .credit a{color:#777;text-decoration:none}
+  .credit a:hover{color:var(--orange)}
+
+  @media (prefers-reduced-motion: reduce){.action,.mult{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">A game about taking profit</div>
+      <h1>Liquidity or<br>Liquidation<span class="slash">/</span></h1>
+    </div>
+    <button class="mute" id="muteBtn" aria-label="Toggle sound">&#128266;</button>
+  </header>
+
+  <div class="disclaimer"><span>&#9888;</span><span><b>Financial literacy game.</b> No real money, no real trades. Fake gamble responsibly.</span></div>
+
+  <div class="layout">
+    <div class="stats">
+      <div class="stat"><div class="lbl">Your bag</div><div class="val even" id="bag">$1,000</div></div>
+      <div class="stat"><div class="lbl">Best run</div><div class="val" id="best">$1,000</div></div>
+    </div>
+
+    <main class="main">
+      <div class="chartwrap">
+        <canvas id="c"></canvas>
+        <div class="overlay" id="overlay">
+          <div class="mult" id="mult">1.00x</div>
+          <div class="cashval" id="cashval">Market's open. Untested conviction.</div>
+        </div>
+      </div>
+
+      <div class="quip" id="quip">Ape in. The price wanders up and down. Cash out before it rugs.</div>
+
+      <div class="lev" id="lev"><span class="lev-lbl">Leverage</span></div>
+      <div class="lev-note" id="levNote">No leverage. Your money, your risk.</div>
+
+      <button class="action ape" id="btn">Ape in &#9650;</button>
+      <button class="action broke" id="brokeBtn">&#9888; Go for broke - risk the whole bag</button>
+      <button class="share" id="snapBtn">&#128248; Snap your gains for the timeline</button>
+
+      <div class="log" id="log"></div>
+    </main>
+
+    <div class="lb">
+      <h2>Leaderboard<span class="slash">/</span></h2>
+      <div class="lb-form">
+        <input id="handleInput" maxlength="20" placeholder="your handle" autocomplete="off" spellcheck="false">
+        <input id="twInput" maxlength="16" placeholder="@x handle (optional)" autocomplete="off" spellcheck="false">
+        <button id="submitScoreBtn">Submit best</button>
+      </div>
+      <div class="lb-status" id="lbStatus"></div>
+      <div class="lb-list" id="lbList"></div>
+    </div>
+  </div>
+
+  <footer>The price drifts up but dips and rebounds, just like the real thing. A dip isn't a loss, so you can sell into red. But a rug can hit any second and gets likelier the higher you ride. Hold too long waiting for the bounce and you become the exit liquidity.<br><br>Leverage borrows from the house at an absurd rate - on purpose. So does a payday loan. You just don't feel it in fast-forward.<br><br><span class="credit">A <b>GIO<span class="cslash">/</span></b> game, built with Claude. &middot; <a href="https://giovannieverduin.com">giovannieverduin.com</a></span></footer>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <img class="cardimg" id="cardimg" alt="Your gains card">
+    <div class="modal-btns">
+      <button class="primary" id="dlBtn">Download</button>
+      <button id="capBtn">Copy caption</button>
+      <button id="closeBtn">Close</button>
+    </div>
+    <div class="modal-hint">Save it, post it, become someone's exit liquidity.</div>
+  </div>
+</div>
+
+<script>
+const CASH_QUIPS=[
+  "Took profit. Statistically, you're a unicorn.",
+  "Sold green. Your bloodline thanks you.",
+  "Diamond hands knew when to fold.",
+  "That's called discipline. Don't get used to it.",
+  "Banked it. The chart wanted more from you.",
+  "Clean exit. Somebody else held that bag."
+];
+const DEAD_QUIPS=[
+  "You are the exit liquidity.",
+  "Liquidated. The chart didn't care about your thesis.",
+  "Rekt. 'It'll bounce back.' It did not.",
+  "Down bad. Go touch grass.",
+  "Held to zero. A true believer.",
+  "Liquidation. Conviction is not a strategy."
+];
+const BROKE_WIN=[
+  "Went for broke. Came back rich.",
+  "All in, and the chart blinked first.",
+  "Profitable degeneracy. The rarest kind.",
+  "You mooned it. Try not to let it ruin you."
+];
+const BROKE_DEAD=[
+  "Went for broke. Found broke.",
+  "All in. All gone. Almost respectable.",
+  "Zero. But what a way to go.",
+  "The moon was a lie. It usually is."
+];
+
+const cvs=document.getElementById('c');
+const ctx=cvs.getContext('2d');
+const overlay=document.getElementById('overlay');
+const multEl=document.getElementById('mult');
+const cashEl=document.getElementById('cashval');
+const quipEl=document.getElementById('quip');
+const btn=document.getElementById('btn');
+const brokeBtn=document.getElementById('brokeBtn');
+const bagEl=document.getElementById('bag');
+const bestEl=document.getElementById('best');
+const logEl=document.getElementById('log');
+
+let bag=1000, best=1000;
+let state='idle';        // idle | climbing | dead
+let broke=false;
+let lev=1, levActive=false, borrowed=0, owed=0, roundBag=1000;
+const RATE=0.0075;       // house interest per second, compounding (the carry cost of borrowing - real but not crushing)
+let mult=1, points=[], startT=0, lastT=0, raf=null;
+let history=[];
+let bestPoints=[];
+
+function fmt(n){const neg=n<0;n=Math.abs(Math.floor(n));return (neg?'-$':'$')+n.toLocaleString('en-US');}
+function setBag(v){
+  bag=v;
+  bagEl.textContent=fmt(v);
+  bagEl.classList.remove('profit','loss','even');
+  bagEl.classList.add(v>1000?'profit':(v<1000?'loss':'even'));
+}
+
+function sizeCanvas(){
+  const dpr=window.devicePixelRatio||1;
+  const w=cvs.clientWidth, h=cvs.clientHeight;
+  cvs.width=w*dpr; cvs.height=h*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize',()=>{sizeCanvas();drawIdle();});
+
+const LEVS=[1,2,5,10];
+const levEl=document.getElementById('lev');
+const levNoteEl=document.getElementById('levNote');
+function buildLev(){
+  levEl.querySelectorAll('button').forEach(b=>b.remove());
+  LEVS.forEach(L=>{
+    const b=document.createElement('button');
+    b.textContent=L+'x';
+    if(L>=5)b.classList.add('hot');
+    if(L===lev)b.classList.add('active');
+    b.onclick=()=>{if(state!=='idle')return;lev=L;buildLev();updateLevNote();};
+    levEl.appendChild(b);
+  });
+}
+function updateLevNote(){
+  levNoteEl.textContent = lev===1
+    ? 'No leverage. Your money, your risk.'
+    : 'Borrowing '+(lev-1)+'x from the house. Interest compounds every second you stay in.';
+}
+function showLev(on){levEl.style.display=on?'flex':'none';levNoteEl.style.display=on?'block':'none';}
+
+function drawGrid(){
+  const w=cvs.clientWidth,h=cvs.clientHeight;
+  ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+  for(let i=1;i<5;i++){const y=h*i/5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  for(let i=1;i<6;i++){const x=w*i/6;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+}
+function drawIdle(){drawGrid();}
+
+function drawLine(color,fill,crashDrop){
+  const w=cvs.clientWidth,h=cvs.clientHeight;
+  drawGrid();
+  if(points.length<2) return;
+  const maxT=Math.max(points[points.length-1].t,1.5);
+  let maxM=1.08,minM=0.99;
+  for(const p of points){if(p.m>maxM)maxM=p.m;if(p.m<minM)minM=p.m;}
+  // log scale on Y - the way real price charts handle a huge range (1x to 500x)
+  const lmin=Math.log(Math.max(minM,0.02));
+  const lmax=Math.log(Math.max(maxM,minM*1.08));
+  const span=Math.max(lmax-lmin,0.0001);
+  const pad=14;
+  const X=t=>pad+(t/maxT)*(w-pad*2);
+  const Y=m=>h-pad-((Math.log(Math.max(m,0.02))-lmin)/span)*(h-pad*2);
+  if(fill){
+    const g=ctx.createLinearGradient(0,0,0,h);
+    g.addColorStop(0,color+'44');
+    g.addColorStop(1,color+'00');
+    ctx.beginPath();ctx.moveTo(X(points[0].t),Y(points[0].m));
+    for(const p of points) ctx.lineTo(X(p.t),Y(p.m));
+    ctx.lineTo(X(points[points.length-1].t),h-pad);
+    ctx.lineTo(X(points[0].t),h-pad);ctx.closePath();
+    ctx.fillStyle=g;ctx.fill();
+  }
+  ctx.beginPath();ctx.moveTo(X(points[0].t),Y(points[0].m));
+  for(const p of points) ctx.lineTo(X(p.t),Y(p.m));
+  ctx.strokeStyle=color;ctx.lineWidth=3;ctx.lineJoin='round';ctx.stroke();
+  const last=points[points.length-1];
+  if(crashDrop){
+    ctx.beginPath();ctx.moveTo(X(last.t),Y(last.m));ctx.lineTo(X(last.t),h-pad);
+    ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();
+  }
+  ctx.beginPath();ctx.arc(X(last.t),Y(last.m),4,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+}
+
+// standard normal for the price random walk
+let spareGauss=null;
+function gauss(){
+  if(spareGauss!==null){const s=spareGauss;spareGauss=null;return s;}
+  let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();
+  const mag=Math.sqrt(-2*Math.log(u));
+  spareGauss=mag*Math.sin(2*Math.PI*v);
+  return mag*Math.cos(2*Math.PI*v);
+}
+
+// ---- Sound (synthesised, no assets) ----
+let soundOn=true, actx=null;
+function audio(){if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return actx;}
+function resumeAudio(){const a=audio();if(a&&a.state==='suspended')a.resume();}
+function ching(){          // cash register: bright rising arpeggio
+  if(!soundOn)return;const a=audio();if(!a)return;const n=a.currentTime;
+  [[1318,0],[1760,0.07],[2637,0.14]].forEach(([f,o])=>{
+    const osc=a.createOscillator(),g=a.createGain();
+    osc.type='triangle';osc.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,n+o);
+    g.gain.exponentialRampToValueAtTime(0.22,n+o+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,n+o+0.2);
+    osc.connect(g);g.connect(a.destination);osc.start(n+o);osc.stop(n+o+0.22);
+  });
+}
+function thud(){           // liquidation: descending saw + noise splat
+  if(!soundOn)return;const a=audio();if(!a)return;const n=a.currentTime;
+  const osc=a.createOscillator(),g=a.createGain();
+  osc.type='sawtooth';osc.frequency.setValueAtTime(280,n);
+  osc.frequency.exponentialRampToValueAtTime(38,n+0.5);
+  g.gain.setValueAtTime(0.28,n);
+  g.gain.exponentialRampToValueAtTime(0.0001,n+0.55);
+  osc.connect(g);g.connect(a.destination);osc.start(n);osc.stop(n+0.6);
+  const len=Math.floor(a.sampleRate*0.18);
+  const buf=a.createBuffer(1,len,a.sampleRate);const d=buf.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+  const ns=a.createBufferSource(),ng=a.createGain();
+  ns.buffer=buf;ng.gain.setValueAtTime(0.18,n);ng.gain.exponentialRampToValueAtTime(0.0001,n+0.18);
+  ns.connect(ng);ng.connect(a.destination);ns.start(n);
+}
+
+function start(isBroke){
+  if(state==='climbing') return;
+  broke=!!isBroke;
+  levActive=(!broke && lev>1);
+  roundBag=bag;
+  borrowed=levActive?bag*(lev-1):0;
+  owed=borrowed;
+  state='climbing';
+  mult=1;points=[{t:0,m:1}];
+  startT=performance.now();lastT=startT;
+  btn.textContent=broke?'Cash out - all in':(levActive?'Cash out - '+lev+'x':'Cash out');btn.className='action cash';
+  brokeBtn.style.display='none';showLev(false);
+  quipEl.textContent=broke?'All in. Moon or zero. No take-backs.':(levActive?'Leveraged '+lev+'x. The meter is running.':'');
+  multEl.className='mult';cashEl.style.color='#cfcfcf';
+  raf=requestAnimationFrame(loop);
+}
+
+function loop(now){
+  let dt=(now-lastT)/1000;lastT=now;
+  if(dt<0)dt=0; if(dt>0.05)dt=0.05;
+  const t=(now-startT)/1000;
+  // price as a random walk with strong upward drift (geometric Brownian motion).
+  // tuned for a fat upper tail: real shots at 5x, 10x, 25x+, with rare 100x/500x moonshots.
+  const sigma=broke?1.15:0.65;     // volatility (the wiggle)
+  const mu=broke?1.05:0.72;        // upward drift - faster climb, more big hits
+  mult*=Math.exp((mu-0.5*sigma*sigma)*dt + sigma*Math.sqrt(dt)*gauss());
+  if(!isFinite(mult)||mult<0.05) mult=Math.max(mult||0.05,0.05);
+  points.push({t,m:mult});
+  if(points.length>800) points.shift();
+  // rug hazard ramps with the multiplier: the higher you ride, the deadlier it gets.
+  // everything hits zero in the end - no run survives forever.
+  const lambda=(broke?0.28:0.24) + mult*(broke?0.006:0.005);
+  if(Math.random() < lambda*dt){ liquidate(); return; }
+
+  multEl.textContent=mult.toFixed(2)+'x';
+  if(levActive){
+    owed=borrowed*Math.pow(1+RATE,t);
+    const live=roundBag*lev*mult-owed;
+    cashEl.textContent='Cash '+fmt(live)+'  •  owe '+fmt(owed);
+  }else{
+    cashEl.textContent='Cash out: '+fmt(bag*mult);
+  }
+  if(mult>=2.2) multEl.classList.add('danger');
+  drawLine(broke?'#ff5a2a':'#3ddc84',true);
+  raf=requestAnimationFrame(loop);
+}
+
+function cashOut(){
+  if(state!=='climbing') return;
+  cancelAnimationFrame(raf);
+  const m=mult;const wasBroke=broke;const wasLev=levActive;
+  bag = wasLev ? (roundBag*lev*m - owed) : (bag*m);
+  setBag(bag);
+  if(bag>best){best=bag;bestEl.textContent=fmt(best);bestPoints=points.slice();}
+  multEl.className='mult';multEl.textContent=m.toFixed(2)+'x';
+
+  if(wasLev && bag<=0){
+    // sold green but the loan + interest still buried you
+    thud();
+    state='dead';levActive=false;broke=false;
+    cashEl.style.color='#cfcfcf';
+    cashEl.textContent='Cashed out, still owe '+fmt(-bag);
+    quipEl.textContent='You sold in profit and still owed money. That is leverage.';
+    addLog(m,false,bag);
+    btn.textContent='New run ↻';btn.className='action again';
+    brokeBtn.style.display='none';showLev(false);
+    return;
+  }
+
+  state='idle';
+  ching();
+  cashEl.style.color='var(--orange)';
+  if(wasLev){
+    cashEl.textContent='Banked '+fmt(bag)+'  •  interest cost '+fmt(owed);
+    quipEl.textContent='Cashed a '+lev+'x. The house skimmed '+fmt(owed)+' before you saw a cent.';
+  }else{
+    cashEl.textContent='Banked '+fmt(bag);
+    quipEl.textContent=wasBroke?BROKE_WIN[Math.floor(Math.random()*BROKE_WIN.length)]:CASH_QUIPS[Math.floor(Math.random()*CASH_QUIPS.length)];
+  }
+  addLog(m,true,bag);
+  levActive=false;broke=false;
+  btn.textContent='Ape in again ▲';btn.className='action ape';
+  brokeBtn.style.display='';showLev(true);
+}
+
+function liquidate(){
+  cancelAnimationFrame(raf);
+  thud();
+  const wasBroke=broke;const wasLev=levActive;
+  const peak=mult;
+  state='dead';
+  drawLine('#ff3b3b',true,true);
+  multEl.className='mult dead deadtext';
+  multEl.textContent='Liquidated';
+  cashEl.style.color='#cfcfcf';
+  const justWon=history.length && history[0].win;
+  if(wasLev){
+    setBag(-owed);                               // stake gone, loan + interest still owed
+    cashEl.textContent='You owe the house '+fmt(owed);
+    quipEl.textContent='Borrowed '+fmt(borrowed)+', owe '+fmt(owed)+' after interest. The house always gets paid.';
+  }else if(wasBroke){
+    setBag(0);
+    cashEl.textContent='Wiped to $0';
+    quipEl.textContent=BROKE_DEAD[Math.floor(Math.random()*BROKE_DEAD.length)];
+  }else{
+    cashEl.textContent='Run ended at '+fmt(bag);
+    quipEl.textContent=justWon?'Round-tripped like a pro.':DEAD_QUIPS[Math.floor(Math.random()*DEAD_QUIPS.length)];
+  }
+  addLog(peak,false,bag);
+  levActive=false;broke=false;
+  btn.textContent='New run ↻';btn.className='action again';
+  brokeBtn.style.display='none';showLev(false);
+}
+
+function newRun(){
+  setBag(1000);
+  state='idle';points=[];owed=0;borrowed=0;levActive=false;
+  multEl.className='mult';multEl.textContent='1.00x';
+  cashEl.style.color='#cfcfcf';cashEl.textContent='Fresh bag. Try not to round-trip it.';
+  quipEl.textContent='Ape in. Cash out before the chart turns on you.';
+  btn.textContent='Ape in ▲';btn.className='action ape';
+  brokeBtn.style.display='';showLev(true);updateLevNote();
+  drawIdle();
+}
+
+function addLog(m,win,bagAfter){
+  history.unshift({m,win,bagAfter});
+  history=history.slice(0,5);
+  logEl.innerHTML=history.map(h=>
+    '<div class="logrow '+(h.win?'win':'loss')+'"><span class="m">'+h.m.toFixed(2)+'x</span>'+
+    '<span class="r">'+(h.win?'cashed &#8594; '+fmt(h.bagAfter):'liquidated')+'</span></div>'
+  ).join('');
+}
+
+btn.addEventListener('click',()=>{
+  resumeAudio();
+  if(state==='idle') start(false);
+  else if(state==='climbing') cashOut();
+  else if(state==='dead') newRun();
+});
+brokeBtn.addEventListener('click',()=>{
+  resumeAudio();
+  if(state==='idle') start(true);
+});
+const muteBtn=document.getElementById('muteBtn');
+muteBtn.addEventListener('click',()=>{
+  soundOn=!soundOn;
+  muteBtn.innerHTML=soundOn?'&#128266;':'&#128263;';
+  muteBtn.classList.toggle('off',!soundOn);
+  if(soundOn)resumeAudio();
+});
+// keyboard / tap anywhere on chart to cash out fast
+cvs.addEventListener('click',()=>{if(state==='climbing')cashOut();});
+window.addEventListener('keydown',e=>{
+  if(e.code==='Space'){e.preventDefault();resumeAudio();
+    if(state==='idle')start(false);else if(state==='climbing')cashOut();else newRun();}
+});
+
+// ---- Shareable gains card ----
+function drawCardSpark(x,x0,x1,y0,y1,color){
+  const pts=(bestPoints&&bestPoints.length>1)?bestPoints:[{t:0,m:1},{t:1,m:Math.max(best/1000,1.02)}];
+  const maxT=pts[pts.length-1].t||1;
+  const maxM=Math.max.apply(null,pts.map(p=>p.m).concat([1.1]));
+  const denom=Math.max(maxM-1,0.0001);
+  const X=t=>x0+(t/maxT)*(x1-x0);
+  const Y=m=>y1-((m-1)/denom)*(y1-y0);
+  const g=x.createLinearGradient(0,y0,0,y1);
+  g.addColorStop(0,color+'55');g.addColorStop(1,color+'00');
+  x.beginPath();x.moveTo(X(pts[0].t),Y(pts[0].m));
+  pts.forEach(p=>x.lineTo(X(p.t),Y(p.m)));
+  x.lineTo(X(pts[pts.length-1].t),y1);x.lineTo(X(pts[0].t),y1);x.closePath();
+  x.fillStyle=g;x.fill();
+  x.beginPath();x.moveTo(X(pts[0].t),Y(pts[0].m));
+  pts.forEach(p=>x.lineTo(X(p.t),Y(p.m)));
+  x.strokeStyle=color;x.lineWidth=6;x.lineJoin='round';x.stroke();
+}
+
+function drawCard(){
+  const S=1080;
+  const cc=document.createElement('canvas');cc.width=S;cc.height=S;
+  const x=cc.getContext('2d');
+  x.fillStyle='#111111';x.fillRect(0,0,S,S);
+  x.strokeStyle='rgba(255,255,255,0.04)';x.lineWidth=2;
+  for(let i=1;i<6;i++){const gy=S*i/6;x.beginPath();x.moveTo(0,gy);x.lineTo(S,gy);x.stroke();const gx=S*i/6;x.beginPath();x.moveTo(gx,0);x.lineTo(gx,S);x.stroke();}
+  const pad=90;
+  const multX=best/1000;
+  const pct=(multX-1)*100;
+  const up=multX>1.0001;
+  const accent=up?'#FF6B2B':'#ff3b3b';
+  // header
+  x.textAlign='left';x.font='900 48px Outfit';x.fillStyle='#fff';
+  x.fillText('GIO',pad,pad+44);
+  const gw=x.measureText('GIO').width;
+  x.fillStyle='#FF6B2B';x.fillText('/',pad+gw+4,pad+44);
+  x.textAlign='right';x.font='700 22px "Space Mono"';x.fillStyle='#8a8a8a';
+  x.fillText('LIQUIDITY OR LIQUIDATION',S-pad,pad+38);
+  // label
+  x.textAlign='left';x.font='700 26px "Space Mono"';x.fillStyle='#8a8a8a';
+  x.fillText(up?'BEST RUN':'BEST RUN / NO PROFIT TAKEN',pad,pad+170);
+  // hero
+  x.font='900 200px Outfit';x.fillStyle=accent;
+  x.fillText(multX.toFixed(2)+'x',pad-4,pad+360);
+  // pct + bag
+  x.font='700 44px "Space Mono"';x.fillStyle='#fff';
+  x.fillText((up?'+':'')+pct.toFixed(0)+'%',pad,pad+430);
+  x.font='400 38px "DM Sans"';x.fillStyle='#cfcfcf';
+  x.fillText('$1,000   →   '+fmt(best),pad,pad+490);
+  // sparkline band
+  drawCardSpark(x,pad,S-pad,pad+560,S-pad-150,accent);
+  // footer
+  x.textAlign='left';x.font='700 30px "Space Mono"';x.fillStyle='#fff';
+  x.fillText('giovannieverduin.com',pad,S-pad+30);
+  x.textAlign='right';x.font='400 27px "DM Sans"';x.fillStyle='#8a8a8a';
+  x.fillText(up?'Took profit. Allegedly.':'Diamond hands to nowhere.',S-pad,S-pad+28);
+  return cc.toDataURL('image/png');
+}
+
+const modal=document.getElementById('modal');
+async function snap(){
+  if(document.fonts&&document.fonts.ready){try{await document.fonts.ready;}catch(e){}}
+  const url=drawCard();
+  document.getElementById('cardimg').src=url;
+  window._cardURL=url;
+  modal.classList.add('show');
+}
+document.getElementById('snapBtn').addEventListener('click',snap);
+document.getElementById('dlBtn').addEventListener('click',()=>{
+  const a=document.createElement('a');a.href=window._cardURL;a.download='liquidity-or-liquidation-gains.png';
+  document.body.appendChild(a);a.click();a.remove();
+});
+document.getElementById('capBtn').addEventListener('click',()=>{
+  const txt='Ran $1,000 to '+fmt(best)+' on Liquidity or Liquidation ('+(best/1000).toFixed(2)+'x). 📈\nThink you can time the top better? GIO/ - giovannieverduin.com';
+  const b=document.getElementById('capBtn');
+  navigator.clipboard&&navigator.clipboard.writeText(txt).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy caption',1500);});
+});
+document.getElementById('closeBtn').addEventListener('click',()=>modal.classList.remove('show'));
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('show');});
+
+// ---- Leaderboard ----
+// Production data layer. The browser never touches Supabase or any key - it
+// only calls the serverless endpoint (api/leaderboard.js), which reads and
+// writes via the server-side service role key. The prototype's window.storage
+// path is gone; this is the real cross-user board.
+const API='/api/leaderboard';
+let myKey=null;
+let submitting=false;
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// row identity, mirrored server-side - used here only to highlight "me"
+function keyFor(h){return 'k'+h.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,24);}
+
+async function boardLoad(){
+  try{
+    const r=await fetch(API,{headers:{'accept':'application/json'}});
+    if(!r.ok) throw new Error('load');
+    const d=await r.json();
+    return Array.isArray(d.board)?d.board:[];
+  }catch(e){return [];}
+}
+
+// local prefill only - remembers your handle on this device, no cross-user role
+function loadMe(){try{return JSON.parse(localStorage.getItem('lol_me')||'null');}catch(e){return null;}}
+function saveMe(me){try{localStorage.setItem('lol_me',JSON.stringify(me));}catch(e){}}
+
+const handleInput=document.getElementById('handleInput');
+const twInput=document.getElementById('twInput');
+const lbStatus=document.getElementById('lbStatus');
+const lbList=document.getElementById('lbList');
+const submitBtn=document.getElementById('submitScoreBtn');
+
+function renderBoard(arr){
+  if(!arr.length){lbList.innerHTML='<div class="lb-empty">No scores yet. Be the first to flex.</div>';return;}
+  lbList.innerHTML=arr.map((e,i)=>{
+    const tw=e.twitter?'<span class="lb-tw"><a href="https://x.com/'+encodeURIComponent(e.twitter)+'" target="_blank" rel="noopener">@'+esc(e.twitter)+'</a></span>':'';
+    return '<div class="lb-row'+(e.key===myKey?' me':'')+'">'+
+      '<span class="lb-rank">'+(i+1)+'</span>'+
+      '<span class="lb-handle">'+esc(e.handle)+' '+tw+'</span>'+
+      '<span class="lb-score">'+fmt(e.score)+'</span></div>';
+  }).join('');
+}
+
+async function submitScore(){
+  if(submitting)return;
+  const handle=(handleInput.value||'').trim();
+  if(!handle){lbStatus.textContent='Pick a handle first.';return;}
+  const key=keyFor(handle);
+  if(key==='k'){lbStatus.textContent='Handle needs a letter or number.';return;}
+  const tw=(twInput.value||'').trim().replace(/^@/,'').replace(/[^A-Za-z0-9_]/g,'').slice(0,15);
+  const entry={handle:handle.slice(0,20),twitter:tw,score:Math.floor(best)};
+  submitting=true;submitBtn.disabled=true;lbStatus.textContent='Submitting…';
+  try{
+    const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(entry)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){lbStatus.textContent=d.error||'Could not submit. Try again.';return;}
+    myKey=d.key||key;
+    saveMe({handle:entry.handle,twitter:tw});
+    renderBoard(Array.isArray(d.board)?d.board:[]);
+    lbStatus.textContent=d.rank?('You are #'+d.rank+' with '+fmt(best)+'.'):'Submitted.';
+  }catch(e){
+    lbStatus.textContent='Network error. Try again.';
+  }finally{
+    submitting=false;submitBtn.disabled=false;
+  }
+}
+submitBtn.addEventListener('click',submitScore);
+
+(async()=>{
+  const me=loadMe();
+  if(me){handleInput.value=me.handle||'';twInput.value=me.twitter||'';myKey=keyFor(me.handle||'x');}
+  renderBoard(await boardLoad());
+})();
+
+buildLev();updateLevNote();
+sizeCanvas();drawIdle();
+</script>
+</body>
+</html>
