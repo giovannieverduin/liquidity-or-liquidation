@@ -139,6 +139,29 @@
   .credit a{color:#777;text-decoration:none}
   .credit a:hover{color:var(--orange)}
 
+  /* ---- first-time how-to-play ---- */
+  .hdr-btns{display:flex;gap:8px;align-items:flex-start;margin-top:2px}
+  .help{background:transparent;border:1px solid var(--panel-edge);color:var(--muted);font-family:'Space Mono',monospace;font-weight:700;font-size:14px;width:30px;height:30px;border-radius:50%;cursor:pointer;line-height:1;padding:0;transition:all .15s}
+  .help:hover{color:#fff;border-color:#3a3a3a}
+  .intro{position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center;padding:18px;z-index:70;overflow-y:auto}
+  .intro.show{display:flex}
+  .intro-card{width:100%;max-width:430px;background:var(--panel);border:1px solid var(--panel-edge);border-radius:16px;padding:clamp(20px,5vw,28px);max-height:92vh;overflow-y:auto}
+  .intro-eyebrow{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--orange);margin-bottom:8px}
+  .intro h2{font-family:'Outfit',sans-serif;font-weight:900;font-size:clamp(26px,7vw,34px);line-height:1;letter-spacing:-1px;text-transform:uppercase;margin-bottom:17px}
+  .intro h2 .slash{color:var(--orange)}
+  .intro-steps{display:flex;flex-direction:column;gap:13px;margin-bottom:17px}
+  .intro-step{display:flex;gap:12px;align-items:flex-start}
+  .intro-step .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--orange);color:var(--charcoal);font-family:'Outfit',sans-serif;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .intro-step .t{font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.45;color:#e6e6e6}
+  .intro-step .t b{color:#fff;font-weight:700}
+  .intro-note{font-family:'Space Mono',monospace;font-size:12px;line-height:1.55;color:#cdb6a6;border:1px solid var(--orange);background:rgba(255,107,43,.08);border-radius:9px;padding:10px 12px;margin-bottom:13px}
+  .intro-note b{color:var(--orange)}
+  .intro-controls{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.55}
+  .intro-controls b{color:#ddd}
+  .intro-cta{width:100%;border:none;border-radius:12px;padding:16px;cursor:pointer;font-family:'Outfit',sans-serif;font-weight:900;font-size:18px;letter-spacing:.5px;text-transform:uppercase;background:var(--green);color:#fff;transition:filter .15s}
+  .intro-cta:hover{filter:brightness(1.08)}
+  .intro-fine{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.3px;color:#6f6f6f;text-align:center;margin-top:11px;line-height:1.5}
+
   /* ---- gamification layer ---- */
   .rank{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--orange);margin-top:5px}
   .streak{display:none;align-items:center;gap:9px;margin:0 0 11px;padding:9px 13px;border:1px solid var(--panel-edge);border-radius:10px;background:var(--panel);font-family:'Space Mono',monospace}
@@ -183,7 +206,10 @@
       <div class="eyebrow">A game about taking profit</div>
       <h1>Liquidity or<br>Liquidation<span class="slash">/</span></h1>
     </div>
-    <button class="mute" id="muteBtn" aria-label="Toggle sound">&#128266;</button>
+    <div class="hdr-btns">
+      <button class="help" id="helpBtn" aria-label="How to play" title="How to play">?</button>
+      <button class="mute" id="muteBtn" aria-label="Toggle sound">&#128266;</button>
+    </div>
   </header>
 
   <div class="disclaimer"><span>&#9888;</span><span><b>Financial literacy game.</b> No real money, no real trades. Fake gamble responsibly.</span></div>
@@ -246,6 +272,22 @@
       <button id="closeBtn">Close</button>
     </div>
     <div class="modal-hint">Save it, post it, become someone's exit liquidity.</div>
+  </div>
+</div>
+
+<div class="intro" id="intro">
+  <div class="intro-card">
+    <div class="intro-eyebrow">First time? 15-second briefing</div>
+    <h2>How to play<span class="slash">/</span></h2>
+    <div class="intro-steps">
+      <div class="intro-step"><span class="n">1</span><span class="t"><b>Ape in.</b> Your $1,000 rides a live market. The orange line climbs - and so does your cash-out value.</span></div>
+      <div class="intro-step"><span class="n">2</span><span class="t"><b>Cash out before it rugs.</b> Tap to bank your gains. The higher you ride, the bigger the number - and the likelier it all vanishes in an instant.</span></div>
+      <div class="intro-step"><span class="n">3</span><span class="t"><b>Don't become the exit liquidity.</b> Every run rugs in the end. Taking profit is the only skill.</span></div>
+    </div>
+    <div class="intro-note"><b>About leverage (2x-10x):</b> you borrow from the house at an absurd rate that compounds every second. You can cash out in profit and still owe money. That's the lesson, not a bug.</div>
+    <div class="intro-controls"><b>Controls:</b> tap <b>Ape in</b> to start, tap again to cash out. On desktop, <b>Space</b> works too - and you can tap the chart to sell fast.</div>
+    <button class="intro-cta" id="introBtn">Got it - ape in &#9650;</button>
+    <div class="intro-fine">No real money, no real trades. A financial-literacy toy in a casino costume.</div>
   </div>
 </div>
 
@@ -889,6 +931,15 @@ submitBtn.addEventListener('click',submitScore);
   if(me){handleInput.value=me.handle||'';twInput.value=me.twitter||'';myKey=keyFor(me.handle||'x');}
   renderBoard(await boardLoad());
 })();
+
+// ---- first-time how-to-play overlay ----
+const introEl=document.getElementById('intro');
+function openIntro(){introEl.classList.add('show');}
+function closeIntro(){introEl.classList.remove('show');try{localStorage.setItem('lol_seen_intro','1');}catch(e){}}
+document.getElementById('introBtn').addEventListener('click',()=>{resumeAudio();closeIntro();});
+document.getElementById('helpBtn').addEventListener('click',openIntro);
+introEl.addEventListener('click',e=>{if(e.target===introEl)closeIntro();});
+try{ if(!localStorage.getItem('lol_seen_intro')) openIntro(); }catch(e){ openIntro(); }
 
 buildLev();updateLevNote();updateRank();
 sizeCanvas();drawIdle();
