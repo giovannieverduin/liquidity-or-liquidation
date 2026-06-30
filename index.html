@@ -234,7 +234,7 @@
     </div>
   </div>
 
-  <footer>The price drifts up but dips and rebounds, just like the real thing. A dip isn't a loss, so you can sell into red. But a rug can hit any second and gets likelier the higher you ride. Hold too long waiting for the bounce and you become the exit liquidity.<br><br>Leverage borrows from the house at an absurd rate - on purpose. So does a payday loan. You just don't feel it in fast-forward.<br><br><span class="credit">A <b>GIO<span class="cslash">/</span></b> game, built with Claude. &middot; <a href="https://giovannieverduin.com">giovannieverduin.com</a></span></footer>
+  <footer>The price drifts up but dips and rebounds, just like the real thing. A dip isn't a loss, so you can sell into red. But a rug can hit any second and gets likelier the higher you ride. Hold too long waiting for the bounce and you become the exit liquidity.<br><br>Leverage borrows from the house at an absurd rate - on purpose. So does a payday loan. You just don't feel it in fast-forward.<br><br><span class="credit">A <b>GIO<span class="cslash">/</span></b> game, built with Claude. &middot; <a href="https://getrugged.app">getrugged.app</a></span></footer>
 </div>
 
 <div class="modal" id="modal">
@@ -788,7 +788,7 @@ function drawCard(){
   drawCardSpark(x,pad,S-pad,pad+560,S-pad-150,accent);
   // footer
   x.textAlign='left';x.font='700 30px "Space Mono"';x.fillStyle='#fff';
-  x.fillText('giovannieverduin.com',pad,S-pad+30);
+  x.fillText('getrugged.app',pad,S-pad+30);
   x.textAlign='right';x.font='400 27px "DM Sans"';x.fillStyle='#8a8a8a';
   x.fillText(up?'Took profit. Allegedly.':'Diamond hands to nowhere.',S-pad,S-pad+28);
   return cc.toDataURL('image/png');
@@ -808,7 +808,7 @@ document.getElementById('dlBtn').addEventListener('click',()=>{
   document.body.appendChild(a);a.click();a.remove();
 });
 document.getElementById('capBtn').addEventListener('click',()=>{
-  const txt='Ran $1,000 to '+fmt(best)+' on Liquidity or Liquidation ('+(best/1000).toFixed(2)+'x) - rank: '+rankFor(best)+'. 📈\nThink you can time the top better? GIO/ - giovannieverduin.com';
+  const txt='Ran $1,000 to '+fmt(best)+' on Liquidity or Liquidation ('+(best/1000).toFixed(2)+'x) - rank: '+rankFor(best)+'. 📈\nThink you can time the top better? GIO/ - getrugged.app';
   const b=document.getElementById('capBtn');
   navigator.clipboard&&navigator.clipboard.writeText(txt).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy caption',1500);});
 });
