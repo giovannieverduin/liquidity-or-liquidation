@@ -35,6 +35,34 @@ data layer is a serverless endpoint:
 - `GET` returns the top 50. `POST` submits a best run. `DELETE` (admin) removes
   a handle.
 
+## Engagement mechanics (and why they teach)
+
+The game installs the same dopamine hooks a real crash app or slot machine uses,
+but every hook names the manipulation out loud - so the engagement loop doubles
+as the financial-literacy lesson. None of it changes the money math or RNG.
+
+- **Win streaks** - an escalating heat chip (building a streak → on a roll → on
+  a heater → unstoppable). Breaks on liquidation with a gambler's-fallacy nudge:
+  *"Streaks are a story you tell yourself. The chart has no memory."*
+- **Near-miss reveal** - after a base-mode rug: *"Rug at 4.2x. One tap sooner
+  banked $4,200. Near-misses are engineered to make you tap again."* The most
+  addictive hook there is, named as such.
+- **Count-up + best-run burst** - odometer roll on the bag, confetti on a new
+  personal best.
+- **Rising-tension audio + haptics** - tick pitch and cadence climb with the
+  multiplier; `navigator.vibrate` on cash-out / liquidation (Android; no-op
+  where unsupported).
+- **Rank titles** - Untested → … → Whale → Exit Liquidity Legend, by best run.
+  Shown on the share card and in the share caption.
+- **Moonshot banners** (>=10x) immediately undercut: *"Almost everyone gives a
+  hit like this straight back chasing the next one."*
+- **Session stats** - longest streak and biggest multiplier.
+
+All motion (streak pop, value flash, confetti) is disabled under
+`prefers-reduced-motion`. Deliberately excluded: streak-based payout changes,
+fake "you're due" pity mechanics, and re-engagement notifications - those cross
+from satire into actually predatory and would break the framing.
+
 ## Setup
 
 1. **Supabase** - run `supabase/schema.sql` against the existing GGE website

@@ -361,7 +361,7 @@ function showStreak(){
     streakEl.classList.add('on');
     scountEl.textContent=streak;
     flameEl.innerHTML= streak>=10?'&#128293;&#128293;&#128293;':streak>=5?'&#128293;&#128293;':'&#128293;';
-    slabelEl.textContent= streak>=10?'unstoppable (statistically, this should not happen)':streak>=5?'on a heater':'building a streak';
+    slabelEl.textContent= streak>=10?'unstoppable (statistically, this should not happen)':streak>=5?'on a heater':streak>=3?'on a roll':'building a streak';
     smetaEl.textContent= bestStreak>streak?('best '+bestStreak):'';
     streakEl.classList.toggle('hot',streak>=5);
     streakEl.classList.remove('pop');void streakEl.offsetWidth;streakEl.classList.add('pop');
