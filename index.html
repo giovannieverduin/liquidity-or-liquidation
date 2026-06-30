@@ -139,7 +139,41 @@
   .credit a{color:#777;text-decoration:none}
   .credit a:hover{color:var(--orange)}
 
-  @media (prefers-reduced-motion: reduce){.action,.mult{transition:none}}
+  /* ---- gamification layer ---- */
+  .rank{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--orange);margin-top:5px}
+  .streak{display:none;align-items:center;gap:9px;margin:0 0 11px;padding:9px 13px;border:1px solid var(--panel-edge);border-radius:10px;background:var(--panel);font-family:'Space Mono',monospace}
+  .streak.on{display:flex}
+  .streak .flame{font-size:18px;line-height:1}
+  .streak .scount{color:var(--orange);font-weight:700;font-size:14px}
+  .streak .slabel{color:#ddd;font-size:12px;flex:1}
+  .streak .smeta{color:var(--muted);font-size:11px;white-space:nowrap}
+  .streak.hot{border-color:var(--orange);background:rgba(255,107,43,.08)}
+  @keyframes streakpop{0%{transform:scale(1)}40%{transform:scale(1.05)}100%{transform:scale(1)}}
+  .streak.pop{animation:streakpop .35s ease}
+
+  .toast{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-14px);z-index:60;
+    max-width:90vw;padding:11px 18px;border-radius:14px;border:1px solid var(--orange);
+    background:#1c1206;color:#fff;font-family:'Space Mono',monospace;font-size:13px;letter-spacing:.3px;
+    text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast b{color:var(--orange)}
+  .toast .tsub{display:block;color:#b9b9b9;font-size:11px;margin-top:4px;letter-spacing:.2px;line-height:1.4}
+
+  .val.flash{animation:valflash .7s ease}
+  @keyframes valflash{0%,100%{transform:scale(1)}30%{transform:scale(1.12);filter:brightness(1.3)}}
+
+  .burst{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+  .burst span{position:absolute;top:46%;left:50%;font-size:15px;will-change:transform,opacity;animation:confetti .9s ease-out forwards}
+  @keyframes confetti{0%{opacity:1;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1)}}
+
+  .sessionline{display:none;gap:14px;margin-top:14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.5px;flex-wrap:wrap}
+  .sessionline b{color:#ddd;font-weight:700}
+
+  @media (prefers-reduced-motion: reduce){
+    .action,.mult{transition:none}
+    .streak.pop,.val.flash{animation:none}
+    .burst span{animation:confetti .01s linear forwards;opacity:0}
+  }
 </style>
 </head>
 <body>
@@ -157,7 +191,7 @@
   <div class="layout">
     <div class="stats">
       <div class="stat"><div class="lbl">Your bag</div><div class="val even" id="bag">$1,000</div></div>
-      <div class="stat"><div class="lbl">Best run</div><div class="val" id="best">$1,000</div></div>
+      <div class="stat"><div class="lbl">Best run</div><div class="val" id="best">$1,000</div><div class="rank" id="rank">Untested</div></div>
     </div>
 
     <main class="main">
@@ -167,9 +201,12 @@
           <div class="mult" id="mult">1.00x</div>
           <div class="cashval" id="cashval">Market's open. Untested conviction.</div>
         </div>
+        <div class="burst" id="burst"></div>
       </div>
 
       <div class="quip" id="quip">Ape in. The price wanders up and down. Cash out before it rugs.</div>
+
+      <div class="streak" id="streak"><span class="flame" id="flame">&#128293;</span><span class="scount" id="scount">0</span><span class="slabel" id="slabel">building a streak</span><span class="smeta" id="smeta"></span></div>
 
       <div class="lev" id="lev"><span class="lev-lbl">Leverage</span></div>
       <div class="lev-note" id="levNote">No leverage. Your money, your risk.</div>
@@ -179,6 +216,10 @@
       <button class="share" id="snapBtn">&#128248; Snap your gains for the timeline</button>
 
       <div class="log" id="log"></div>
+      <div class="sessionline" id="sessionline">
+        <span>Longest streak <b id="ssStreak">0</b></span>
+        <span>Biggest hit <b id="ssMult">1.00x</b></span>
+      </div>
     </main>
 
     <div class="lb">
@@ -207,6 +248,8 @@
     <div class="modal-hint">Save it, post it, become someone's exit liquidity.</div>
   </div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 const CASH_QUIPS=[
@@ -258,6 +301,20 @@ const RATE=0.0075;       // house interest per second, compounding (the carry co
 let mult=1, points=[], startT=0, lastT=0, raf=null;
 let history=[];
 let bestPoints=[];
+// gamification state (session-scoped, persists across runs)
+let streak=0, bestStreak=0, biggestMult=1, lastTickT=0;
+
+const streakEl=document.getElementById('streak');
+const scountEl=document.getElementById('scount');
+const slabelEl=document.getElementById('slabel');
+const smetaEl=document.getElementById('smeta');
+const flameEl=document.getElementById('flame');
+const rankEl=document.getElementById('rank');
+const toastEl=document.getElementById('toast');
+const burstEl=document.getElementById('burst');
+const sessionlineEl=document.getElementById('sessionline');
+const ssStreakEl=document.getElementById('ssStreak');
+const ssMultEl=document.getElementById('ssMult');
 
 function fmt(n){const neg=n<0;n=Math.abs(Math.floor(n));return (neg?'-$':'$')+n.toLocaleString('en-US');}
 function setBag(v){
@@ -265,6 +322,121 @@ function setBag(v){
   bagEl.textContent=fmt(v);
   bagEl.classList.remove('profit','loss','even');
   bagEl.classList.add(v>1000?'profit':(v<1000?'loss':'even'));
+}
+
+// ---- gamification helpers ----
+// Rank titles by best run. Identity/status that shows on the share card too.
+const RANKS=[
+  [250000,'Exit Liquidity Legend'],
+  [50000,'Whale'],
+  [15000,'Degen Royalty'],
+  [5000,'Diamond Hands'],
+  [2500,'Profit Taker'],
+  [1400,'Paper Hands'],
+  [1001,'Barely Green'],
+  [0,'Untested']
+];
+function rankFor(v){for(const r of RANKS){if(v>=r[0])return r[1];}return 'Untested';}
+function updateRank(){rankEl.textContent=rankFor(best);}
+
+// Odometer count-up on the bag - the "number goes up" dopamine.
+let bagAnim=null;
+function animateBag(from,to){
+  if(bagAnim)cancelAnimationFrame(bagAnim);
+  const dur=520,t0=performance.now();
+  bagEl.classList.remove('profit','loss','even');
+  bagEl.classList.add(to>1000?'profit':(to<1000?'loss':'even'));
+  const step=now=>{
+    const k=Math.min((now-t0)/dur,1);
+    const e=1-Math.pow(1-k,3);
+    bagEl.textContent=fmt(from+(to-from)*e);
+    if(k<1)bagAnim=requestAnimationFrame(step);
+    else{bagAnim=null;bagEl.textContent=fmt(to);}
+  };
+  bagAnim=requestAnimationFrame(step);
+}
+
+function showStreak(){
+  if(streak>=2){
+    streakEl.classList.add('on');
+    scountEl.textContent=streak;
+    flameEl.innerHTML= streak>=10?'&#128293;&#128293;&#128293;':streak>=5?'&#128293;&#128293;':'&#128293;';
+    slabelEl.textContent= streak>=10?'unstoppable (statistically, this should not happen)':streak>=5?'on a heater':'building a streak';
+    smetaEl.textContent= bestStreak>streak?('best '+bestStreak):'';
+    streakEl.classList.toggle('hot',streak>=5);
+    streakEl.classList.remove('pop');void streakEl.offsetWidth;streakEl.classList.add('pop');
+  }else{
+    streakEl.classList.remove('on','hot');
+  }
+}
+
+let toastTimer=null;
+function fireToast(main,sub,ms){
+  toastEl.innerHTML='<span><b>'+main+'</b></span>'+(sub?'<span class="tsub">'+sub+'</span>':'');
+  toastEl.classList.add('show');
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toastEl.classList.remove('show'),ms||2600);
+}
+
+const BURST_EMOJI=['🟢','🟠','💸','📈','✨'];
+function bestBurst(){
+  bestEl.classList.remove('flash');void bestEl.offsetWidth;bestEl.classList.add('flash');
+  for(let i=0;i<14;i++){
+    const s=document.createElement('span');
+    s.textContent=BURST_EMOJI[i%BURST_EMOJI.length];
+    const ang=Math.random()*Math.PI*2, dist=60+Math.random()*90;
+    s.style.setProperty('--dx',(Math.cos(ang)*dist).toFixed(0)+'px');
+    s.style.setProperty('--dy',(Math.sin(ang)*dist-30).toFixed(0)+'px');
+    s.style.animationDelay=(Math.random()*0.08).toFixed(2)+'s';
+    burstEl.appendChild(s);
+    setTimeout(()=>s.remove(),1000);
+  }
+}
+
+function buzz(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+
+function updateSession(){
+  if(bestStreak>0||biggestMult>1.0001){
+    sessionlineEl.style.display='flex';
+    ssStreakEl.textContent=bestStreak;
+    ssMultEl.textContent=biggestMult.toFixed(2)+'x';
+  }
+}
+
+// Resolve a finished round into the streak system. Returns true if it fired a
+// toast (so callers can avoid stacking a second one). The nudges name the
+// manipulation on purpose - the dopamine is the lesson.
+function resolveStreak(didWin,suppress){
+  let fired=false;
+  if(didWin){
+    streak++;
+    bestStreak=Math.max(bestStreak,streak);
+    showStreak();
+    if(!suppress){
+      if(streak===3){fireToast('&#128293; 3 in a row','A heater feels like skill. It is variance wearing a costume.',2800);fired=true;}
+      else if(streak===5){fireToast('&#128293;&#128293; 5 straight','This is exactly where real traders size up - and give it all back.',3000);fired=true;}
+      else if(streak>=7&&streak%3===1){fireToast('&#128293;&#128293;&#128293; '+streak+' in a row','The house loves a believer on a streak.',3000);fired=true;}
+    }
+  }else{
+    if(!suppress&&streak>=3){fireToast('Streak snapped at '+streak,'Streaks are a story you tell yourself. The chart has no memory.',3000);fired=true;}
+    streak=0;
+    showStreak();
+  }
+  updateSession();
+  return fired;
+}
+
+// Rising-tension heartbeat: ticks get higher and faster as the multiplier
+// climbs. The same anticipation curve a crash app uses to keep you in the seat.
+function tick(m){
+  if(!soundOn)return;const a=audio();if(!a)return;const n=a.currentTime;
+  const osc=a.createOscillator(),g=a.createGain();
+  osc.type='square';
+  osc.frequency.value=380+Math.min(m,30)*70;
+  g.gain.setValueAtTime(0.0001,n);
+  g.gain.exponentialRampToValueAtTime(0.045,n+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001,n+0.06);
+  osc.connect(g);g.connect(a.destination);osc.start(n);osc.stop(n+0.07);
 }
 
 function sizeCanvas(){
@@ -390,7 +562,7 @@ function start(isBroke){
   owed=borrowed;
   state='climbing';
   mult=1;points=[{t:0,m:1}];
-  startT=performance.now();lastT=startT;
+  startT=performance.now();lastT=startT;lastTickT=0;
   btn.textContent=broke?'Cash out - all in':(levActive?'Cash out - '+lev+'x':'Cash out');btn.className='action cash';
   brokeBtn.style.display='none';showLev(false);
   quipEl.textContent=broke?'All in. Moon or zero. No take-backs.':(levActive?'Leveraged '+lev+'x. The meter is running.':'');
@@ -424,6 +596,9 @@ function loop(now){
     cashEl.textContent='Cash out: '+fmt(bag*mult);
   }
   if(mult>=2.2) multEl.classList.add('danger');
+  // rising-tension heartbeat: cadence tightens as the multiplier climbs
+  const interval=Math.max(0.6-Math.min(mult,12)*0.04,0.1);
+  if(t-lastTickT>=interval){lastTickT=t;tick(mult);}
   drawLine(broke?'#ff5a2a':'#3ddc84',true);
   raf=requestAnimationFrame(loop);
 }
@@ -432,14 +607,18 @@ function cashOut(){
   if(state!=='climbing') return;
   cancelAnimationFrame(raf);
   const m=mult;const wasBroke=broke;const wasLev=levActive;
+  const prevBag=bag;
   bag = wasLev ? (roundBag*lev*m - owed) : (bag*m);
   setBag(bag);
-  if(bag>best){best=bag;bestEl.textContent=fmt(best);bestPoints=points.slice();}
+  biggestMult=Math.max(biggestMult,m);
+  const newBest = bag>best;
+  if(newBest){best=bag;bestEl.textContent=fmt(best);bestPoints=points.slice();updateRank();}
   multEl.className='mult';multEl.textContent=m.toFixed(2)+'x';
 
   if(wasLev && bag<=0){
     // sold green but the loan + interest still buried you
-    thud();
+    thud();buzz([60]);
+    resolveStreak(false);
     state='dead';levActive=false;broke=false;
     cashEl.style.color='#cfcfcf';
     cashEl.textContent='Cashed out, still owe '+fmt(-bag);
@@ -451,7 +630,13 @@ function cashOut(){
   }
 
   state='idle';
-  ching();
+  ching();buzz([10,28,12]);
+  const profit = bag>prevBag;
+  if(profit) animateBag(prevBag,bag);
+  if(newBest) bestBurst();
+  const moon = profit && m>=10;
+  resolveStreak(profit,moon);
+  if(moon) fireToast('🚀 '+m.toFixed(1)+'x cash-out','Almost everyone gives a hit like this straight back chasing the next one.',3000);
   cashEl.style.color='var(--orange)';
   if(wasLev){
     cashEl.textContent='Banked '+fmt(bag)+'  •  interest cost '+fmt(owed);
@@ -468,9 +653,10 @@ function cashOut(){
 
 function liquidate(){
   cancelAnimationFrame(raf);
-  thud();
+  thud();buzz([70,40,90]);
   const wasBroke=broke;const wasLev=levActive;
   const peak=mult;
+  biggestMult=Math.max(biggestMult,peak);
   state='dead';
   drawLine('#ff3b3b',true,true);
   multEl.className='mult dead deadtext';
@@ -488,6 +674,13 @@ function liquidate(){
   }else{
     cashEl.textContent='Run ended at '+fmt(bag);
     quipEl.textContent=justWon?'Round-tripped like a pro.':DEAD_QUIPS[Math.floor(Math.random()*DEAD_QUIPS.length)];
+  }
+  // break the streak first; if it wasn't a notable streak, surface the
+  // near-miss instead - the single most addictive (and most manipulative) hook
+  const snapped=resolveStreak(false);
+  if(!snapped){
+    if(!wasBroke && !wasLev) fireToast('Rug at '+peak.toFixed(2)+'x','One tap sooner banked '+fmt(roundBag*peak)+'. Near-misses are engineered to make you tap again.',3400);
+    else if(peak>=8) fireToast('You rode '+peak.toFixed(1)+'x into a rug','Watching a moonshot die is the bait. The greed is the product.',3400);
   }
   addLog(peak,false,bag);
   levActive=false;broke=false;
@@ -588,6 +781,9 @@ function drawCard(){
   x.fillText((up?'+':'')+pct.toFixed(0)+'%',pad,pad+430);
   x.font='400 38px "DM Sans"';x.fillStyle='#cfcfcf';
   x.fillText('$1,000   →   '+fmt(best),pad,pad+490);
+  // rank title - identity/status the player chases
+  x.font='700 28px "Space Mono"';x.fillStyle=accent;
+  x.fillText(rankFor(best).toUpperCase(),pad,pad+540);
   // sparkline band
   drawCardSpark(x,pad,S-pad,pad+560,S-pad-150,accent);
   // footer
@@ -612,7 +808,7 @@ document.getElementById('dlBtn').addEventListener('click',()=>{
   document.body.appendChild(a);a.click();a.remove();
 });
 document.getElementById('capBtn').addEventListener('click',()=>{
-  const txt='Ran $1,000 to '+fmt(best)+' on Liquidity or Liquidation ('+(best/1000).toFixed(2)+'x). 📈\nThink you can time the top better? GIO/ - giovannieverduin.com';
+  const txt='Ran $1,000 to '+fmt(best)+' on Liquidity or Liquidation ('+(best/1000).toFixed(2)+'x) - rank: '+rankFor(best)+'. 📈\nThink you can time the top better? GIO/ - giovannieverduin.com';
   const b=document.getElementById('capBtn');
   navigator.clipboard&&navigator.clipboard.writeText(txt).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy caption',1500);});
 });
@@ -694,7 +890,7 @@ submitBtn.addEventListener('click',submitScore);
   renderBoard(await boardLoad());
 })();
 
-buildLev();updateLevNote();
+buildLev();updateLevNote();updateRank();
 sizeCanvas();drawIdle();
 </script>
 </body>
