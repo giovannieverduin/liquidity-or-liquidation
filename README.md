@@ -1,4 +1,6 @@
-# Liquidity or Liquidation / GIO/
+# Get Rugged / GIO/
+
+*Liquidity or Liquidation - a game about taking profit. Live at [getrugged.app](https://getrugged.app).*
 
 A satirical crash-style market-timing game that doubles as financial-literacy
 content. The market pumps, you cash out before it rugs, your bag compounds.
